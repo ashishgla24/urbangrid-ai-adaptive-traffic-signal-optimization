@@ -1,7 +1,9 @@
 venv/
+venv311/
 __pycache__/
 *.pyc
 .env
 .ipynb_checkpoints/
 yolov8n.pt
 yolov8s.pt
+*.h5
