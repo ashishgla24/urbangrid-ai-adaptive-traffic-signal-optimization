@@ -92,10 +92,11 @@
 <nav class="navbar navbar-expand-lg">
     <div class="container-fluid">
         <span class="navbar-brand brand">UrbanGrid AI</span>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge badge-live">LIVE</span>
-            <span class="text-secondary">Smart City Traffic Operations Center</span>
-        </div>
+        <div class="d-flex align-items-center gap-3">
+    <span class="badge badge-live">LIVE</span>
+    <span class="text-secondary">Smart City Traffic Operations Center</span>
+    <span id="navbarClock" class="text-info fw-bold">--:--:--</span>
+</div>
     </div>
 </nav>
 
@@ -135,21 +136,29 @@
 
 <!-- Traffic + Prediction + Signal -->
 <div class="row g-4 mb-4">
-    <div class="col-md-4">
+
+    <div class="col-md-3">
         <div class="metric-card">
             <div class="metric-title">Total Traffic</div>
             <div id="total" class="metric-value text-warning">{{ total }}</div>
         </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="metric-card">
             <div class="metric-title">Predicted Traffic</div>
             <div id="prediction" class="metric-value text-success">{{ prediction }}</div>
         </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-title">Traffic Trend</div>
+            <div id="traffic_trend" class="metric-value text-info">STABLE</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
         <div class="metric-card">
             <div class="metric-title">Signal Status</div>
             <div class="metric-value">
@@ -159,8 +168,8 @@
             </div>
         </div>
     </div>
-</div>
 
+</div>
 <!-- Performance Metrics -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">
@@ -201,6 +210,28 @@
         </div>
     </div>
 </div>
+<div id="emergencyBanner" class="alert alert-danger text-center fw-bold d-none">
+    EMERGENCY VEHICLE DETECTED - PRIORITY SIGNAL ACTIVATED
+</div>
+<div class="row g-4 mb-4">
+
+    <div class="col-12">
+
+        <div class="chart-card">
+
+            <div class="section-title">
+                Live Traffic Camera
+            </div>
+
+            <img src="/video_feed"
+                 class="img-fluid rounded"
+                 style="width:100%; max-height:500px; object-fit:cover;">
+
+        </div>
+
+    </div>
+
+
 
 <!-- Charts -->
 <div class="row g-4 mb-4">
@@ -247,7 +278,11 @@
         </div>
     </div>
 </div>
-
+<div class="text-end mb-3">
+    <a href="/download" class="btn btn-success">
+        Download Traffic Dataset
+    </a>
+</div>
 <div class="d-flex justify-content-between align-items-center pt-2 footer">
     <div>Live dashboard updates every second</div>
     <div>UrbanGrid AI v1.0</div>
@@ -343,6 +378,23 @@ async function updateDashboard() {
 
         document.getElementById('last_update').textContent =
             new Date().toLocaleTimeString();
+        document.getElementById('navbarClock').textContent =
+    new Date().toLocaleTimeString();
+
+if (data.total > data.prediction) {
+    document.getElementById('traffic_trend').textContent = 'INCREASING';
+} else if (data.total < data.prediction) {
+    document.getElementById('traffic_trend').textContent = 'DECREASING';
+} else {
+    document.getElementById('traffic_trend').textContent = 'STABLE';
+}
+
+const banner = document.getElementById('emergencyBanner');
+if (Math.max(data.lane1, data.lane2, data.lane3, data.lane4) >= 12) {
+    banner.classList.remove('d-none');
+} else {
+    banner.classList.add('d-none');
+}
 
         document.getElementById('system_health').textContent =
             data.system_health || 'HEALTHY';
