@@ -1,299 +1,660 @@
 <!DOCTYPE html>
-
-<html lang="en"> <head>     <meta charset="UTF-8">     <meta name="viewport" content="width=device-width, initial-scale=1.0">     <title>UrbanGrid AI Operations Dashboard</title>
-
-```
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UrbanGrid AI | Traffic Operations Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
-    body{
-        background:#0b1220;
-        color:#f8fafc;
-        font-family:'Segoe UI', Arial, sans-serif;
-    }
+  :root{
+    --bg-base:#060a12;
+    --bg-panel:#0a111e;
+    --bg-panel-alt:#0d1526;
+    --bg-raised:#111b2e;
+    --border:#1c2a45;
+    --border-soft:#141f34;
+    --text-primary:#eef2f9;
+    --text-secondary:#7f8fb3;
+    --text-muted:#5a6786;
 
-    .navbar{
-        background:#111827;
-        border-bottom:1px solid #1f2937;
-    }
+    --status-normal:#22c55e;
+    --status-normal-dim:rgba(34,197,94,0.14);
+    --status-caution:#f5a623;
+    --status-caution-dim:rgba(245,166,35,0.14);
+    --status-critical:#ef4444;
+    --status-critical-dim:rgba(239,68,68,0.14);
+    --status-info:#38bdf8;
+    --status-info-dim:rgba(56,189,248,0.14);
 
-    .brand{
-        font-weight:700;
-        color:#22c55e;
-    }
+    --font-display:'Space Grotesk', 'Segoe UI', sans-serif;
+    --font-body:'Inter', 'Segoe UI', sans-serif;
+    --font-mono:'IBM Plex Mono', 'Consolas', monospace;
+  }
 
-    .metric-card{
-        background:#111827;
-        border:1px solid #1f2937;
-        border-radius:18px;
-        padding:22px;
-        box-shadow:0 10px 25px rgba(0,0,0,0.35);
-        transition:transform 0.2s ease, box-shadow 0.2s ease;
-        height:100%;
-    }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
 
-    .metric-card:hover{
-        transform:translateY(-4px);
-        box-shadow:0 16px 32px rgba(0,0,0,0.45);
-    }
+  body{
+    margin:0;
+    background:var(--bg-base);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
 
-    .metric-title{
-        font-size:14px;
-        text-transform:uppercase;
-        letter-spacing:0.08em;
-        color:#94a3b8;
-    }
+  ::selection{ background:var(--status-normal); color:#04150a; }
 
-    .metric-value{
-        font-size:38px;
-        font-weight:700;
-        margin-top:8px;
-    }
+  a{ color:inherit; }
 
-    .chart-card{
-        background:#111827;
-        border:1px solid #1f2937;
-        border-radius:18px;
-        padding:20px;
-        box-shadow:0 10px 25px rgba(0,0,0,0.35);
-    }
+  a:focus-visible, button:focus-visible{
+    outline:2px solid var(--status-info);
+    outline-offset:2px;
+  }
 
-    .section-title{
-        font-size:18px;
-        font-weight:600;
-        margin-bottom:14px;
-    }
+  .id-bar{
+    height:4px;
+    width:100%;
+    background:linear-gradient(90deg,
+      #FF9933 0%, #FF9933 33.3%,
+      #FFFFFF 33.3%, #FFFFFF 66.6%,
+      #138808 66.6%, #138808 100%);
+  }
 
-    .alert-panel{
-        background:#1f2937;
-        border-left:5px solid #ef4444;
-        border-radius:14px;
-        padding:18px;
-    }
+  .masthead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+    padding:16px 32px;
+    background:linear-gradient(180deg, #0a0f1a, #070b13);
+    border-bottom:1px solid var(--border);
+  }
 
-    .footer{
-        color:#94a3b8;
-        font-size:14px;
-    }
+  .masthead-left{ display:flex; align-items:center; gap:16px; }
 
-    .badge-live{ background:#22c55e; }
-    .badge-medium{ background:#f59e0b; }
-    .badge-high{ background:#ef4444; }
-    .badge-green{ background:#16a34a; }
-    .badge-red{ background:#dc2626; }
+  .emblem{
+    width:42px; height:42px;
+    border-radius:8px;
+    background:var(--bg-raised);
+    border:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--status-info);
+    flex-shrink:0;
+  }
+
+  .system-name{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:19px;
+    letter-spacing:0.01em;
+    line-height:1.2;
+  }
+  .system-name span{ color:var(--status-normal); }
+
+  .dept-line{
+    font-size:12.5px;
+    color:var(--text-secondary);
+    letter-spacing:0.03em;
+    margin-top:2px;
+  }
+
+  .masthead-right{ display:flex; align-items:center; gap:20px; }
+
+  .live-pill{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    background:var(--status-normal-dim);
+    border:1px solid rgba(34,197,94,0.35);
+    color:var(--status-normal);
+    font-family:var(--font-mono);
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:0.06em;
+    padding:6px 12px;
+    border-radius:999px;
+  }
+  .live-dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--status-normal);
+    box-shadow:0 0 0 0 rgba(34,197,94,0.6);
+    animation:live-ping 2s ease-out infinite;
+  }
+  @keyframes live-ping{
+    0%{ box-shadow:0 0 0 0 rgba(34,197,94,0.55); }
+    70%{ box-shadow:0 0 0 7px rgba(34,197,94,0); }
+    100%{ box-shadow:0 0 0 0 rgba(34,197,94,0); }
+  }
+
+  .clock-block{ text-align:right; }
+  .clock-time{
+    font-family:var(--font-mono);
+    font-size:16px;
+    font-weight:600;
+    color:var(--status-info);
+    font-variant-numeric:tabular-nums;
+  }
+  .clock-label{
+    font-size:11px;
+    color:var(--text-muted);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+  }
+
+  .context-bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 32px;
+    background:var(--bg-panel);
+    border-bottom:1px solid var(--border-soft);
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-secondary);
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .context-bar .divider{ color:var(--border); margin:0 10px; }
+  .context-bar strong{ color:var(--text-primary); font-weight:600; }
+
+  .main{
+    max-width:1480px;
+    margin:0 auto;
+    padding:28px 32px 64px;
+  }
+
+  .grid{ display:grid; gap:16px; margin-bottom:16px; }
+  .grid-4{ grid-template-columns:repeat(4, 1fr); }
+  .grid-2{ grid-template-columns:2fr 1fr; }
+  .grid-2b{ grid-template-columns:1fr 1fr; }
+
+  @media (max-width:1080px){
+    .grid-4{ grid-template-columns:repeat(2, 1fr); }
+    .grid-2{ grid-template-columns:1fr; }
+    .grid-2b{ grid-template-columns:1fr; }
+    .masthead{ flex-wrap:wrap; }
+  }
+
+  .section-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin:26px 0 10px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .section-label::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--border-soft);
+  }
+
+  .panel{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+  }
+
+  .kpi{
+    padding:16px 18px;
+    position:relative;
+  }
+  .kpi-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .kpi-title{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.09em;
+    color:var(--text-muted);
+    font-weight:600;
+  }
+  .kpi-chip{
+    width:6px; height:6px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  .kpi-value{
+    font-family:var(--font-display);
+    font-size:30px;
+    font-weight:700;
+    margin-top:10px;
+    font-variant-numeric:tabular-nums;
+    line-height:1;
+  }
+  .kpi-unit{
+    font-size:12px;
+    color:var(--text-muted);
+    margin-left:6px;
+    font-weight:500;
+  }
+
+  .chip-info{ background:var(--status-info); box-shadow:0 0 8px rgba(56,189,248,0.5); }
+  .chip-normal{ background:var(--status-normal); box-shadow:0 0 8px rgba(34,197,94,0.5); }
+  .chip-caution{ background:var(--status-caution); box-shadow:0 0 8px rgba(245,166,35,0.5); }
+  .chip-critical{ background:var(--status-critical); box-shadow:0 0 8px rgba(239,68,68,0.5); }
+
+  .text-info{ color:var(--status-info); }
+  .text-normal{ color:var(--status-normal); }
+  .text-caution{ color:var(--status-caution); }
+  .text-critical{ color:var(--status-critical); }
+
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 13px;
+    border-radius:7px;
+    font-family:var(--font-mono);
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.02em;
+  }
+  .badge-normal{ background:var(--status-normal-dim); color:var(--status-normal); border:1px solid rgba(34,197,94,0.35); }
+  .badge-caution{ background:var(--status-caution-dim); color:var(--status-caution); border:1px solid rgba(245,166,35,0.35); }
+  .badge-critical{ background:var(--status-critical-dim); color:var(--status-critical); border:1px solid rgba(239,68,68,0.35); }
+
+  .emergency-banner{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:linear-gradient(90deg, rgba(239,68,68,0.16), rgba(239,68,68,0.05));
+    border:1px solid rgba(239,68,68,0.45);
+    border-left:4px solid var(--status-critical);
+    border-radius:8px;
+    padding:14px 18px;
+    margin-bottom:16px;
+    font-family:var(--font-mono);
+    font-weight:600;
+    letter-spacing:0.02em;
+    color:#fecaca;
+  }
+  .emergency-banner svg{ flex-shrink:0; }
+  .d-none{ display:none; }
+
+  .panel-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 18px 0;
+  }
+  .panel-title{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:14.5px;
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+  .panel-title::before{
+    content:"";
+    width:3px; height:14px;
+    background:var(--status-normal);
+    border-radius:2px;
+  }
+  .panel-meta{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-muted);
+  }
+  .panel-body{ padding:16px 18px 18px; }
+
+  .camera-panel .panel-body{ padding:14px; }
+  .camera-frame{
+    position:relative;
+    border-radius:7px;
+    overflow:hidden;
+    background:#000;
+    border:1px solid var(--border-soft);
+  }
+  .camera-frame img{
+    display:block;
+    width:100%;
+    max-height:520px;
+    object-fit:cover;
+  }
+  .camera-overlay-top{
+    position:absolute;
+    top:0; left:0; right:0;
+    display:flex;
+    justify-content:space-between;
+    padding:10px 14px;
+    background:linear-gradient(180deg, rgba(0,0,0,0.55), transparent);
+    pointer-events:none;
+  }
+  .rec-chip{
+    display:flex; align-items:center; gap:6px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.08em;
+    color:#fecaca;
+  }
+  .rec-dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--status-critical);
+    animation:live-ping-red 1.4s ease-in-out infinite;
+  }
+  @keyframes live-ping-red{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.35; }
+  }
+  .cam-id{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:#cbd5e1;
+    background:rgba(0,0,0,0.4);
+    padding:3px 8px;
+    border-radius:4px;
+  }
+
+  .status-row{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .helper-text{
+    font-size:13px;
+    color:var(--text-secondary);
+    line-height:1.55;
+  }
+
+  .incident-block{
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border-soft);
+    border-left:3px solid var(--status-critical);
+    border-radius:7px;
+    padding:16px 18px;
+  }
+  .incident-status{
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:0.03em;
+    color:#fecaca;
+    margin:0 0 8px;
+  }
+  .incident-row{
+    display:flex;
+    justify-content:space-between;
+    padding:7px 0;
+    border-top:1px solid var(--border-soft);
+    font-size:13px;
+  }
+  .incident-row:first-of-type{ border-top:none; padding-top:0; }
+  .incident-row .label{ color:var(--text-muted); }
+  .incident-row .value{ color:var(--text-primary); font-weight:500; font-family:var(--font-mono); }
+
+  .action-row{
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    margin:18px 0 14px;
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:13.5px;
+    padding:11px 18px;
+    border-radius:8px;
+    text-decoration:none;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:filter 0.15s ease, transform 0.15s ease;
+  }
+  .btn:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  .btn-primary{
+    background:var(--status-normal);
+    color:#04150a;
+  }
+  .btn-ghost{
+    background:transparent;
+    border-color:var(--border);
+    color:var(--text-secondary);
+  }
+
+  .footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+    padding-top:18px;
+    margin-top:8px;
+    border-top:1px solid var(--border-soft);
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-muted);
+  }
+
+  canvas{ max-height:270px; }
 </style>
-```
-
 </head>
 
 <body>
+<div class="id-bar"></div>
 
-<nav class="navbar navbar-expand-lg">
-    <div class="container-fluid">
-        <span class="navbar-brand brand">UrbanGrid AI</span>
-        <div class="d-flex align-items-center gap-3">
-    <span class="badge badge-live">LIVE</span>
-    <span class="text-secondary">Smart City Traffic Operations Center</span>
-    <span id="navbarClock" class="text-info fw-bold">--:--:--</span>
-</div>
+<header class="masthead">
+  <div class="masthead-left">
+    <div class="emblem" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L3 6v6c0 5 3.8 8.7 9 10 5.2-1.3 9-5 9-10V6l-9-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M8.5 12.2l2.4 2.4 4.6-4.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     </div>
-</nav>
-
-<div class="container py-4">
-
-```
-<!-- Lane Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Lane 1</div>
-            <div id="lane1" class="metric-value text-info">{{ lane1 }}</div>
-        </div>
+    <div>
+      <div class="system-name">UrbanGrid <span>AI</span></div>
+      <div class="dept-line">Traffic Police Department · Intersection Operations Console</div>
     </div>
+  </div>
 
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Lane 2</div>
-            <div id="lane2" class="metric-value text-success">{{ lane2 }}</div>
-        </div>
+  <div class="masthead-right">
+    <span class="live-pill"><span class="live-dot"></span>LIVE</span>
+    <div class="clock-block">
+      <div id="navbarClock" class="clock-time">--:--:--</div>
+      <div class="clock-label">IST</div>
     </div>
+  </div>
+</header>
 
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Lane 3</div>
-            <div id="lane3" class="metric-value text-warning">{{ lane3 }}</div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Lane 4</div>
-            <div id="lane4" class="metric-value text-danger">{{ lane4 }}</div>
-        </div>
-    </div>
+<div class="context-bar">
+  <div>
+    JUNCTION ID <strong>JN-000</strong>
+    <span class="divider">|</span>
+    CAMERA <strong id="cam-id-label">CAM-01</strong>
+    <span class="divider">|</span>
+    OPERATOR <strong>&mdash;</strong>
+  </div>
+  <div>
+    MODEL <strong>YOLOv8 &middot; ByteTrack</strong>
+    <span class="divider">|</span>
+    UPTIME SESSION
+  </div>
 </div>
 
-<!-- Traffic + Prediction + Signal -->
-<div class="row g-4 mb-4">
+<main class="main">
 
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Total Traffic</div>
-            <div id="total" class="metric-value text-warning">{{ total }}</div>
+  <div id="emergencyBanner" class="emergency-banner d-none">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M12 3l9 16H3l9-16z" stroke="#fecaca" stroke-width="1.7" stroke-linejoin="round"/>
+      <path d="M12 10v4" stroke="#fecaca" stroke-width="1.7" stroke-linecap="round"/>
+      <circle cx="12" cy="17" r="0.9" fill="#fecaca"/>
+    </svg>
+    EMERGENCY VEHICLE DETECTED — PRIORITY SIGNAL ACTIVATED
+  </div>
+
+  <div class="section-label">Lane Occupancy</div>
+  <div class="grid grid-4">
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Lane 1</span><span class="kpi-chip chip-info"></span></div>
+      <div id="lane1" class="kpi-value text-info">{{ lane1 }}</div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Lane 2</span><span class="kpi-chip chip-normal"></span></div>
+      <div id="lane2" class="kpi-value text-normal">{{ lane2 }}</div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Lane 3</span><span class="kpi-chip chip-caution"></span></div>
+      <div id="lane3" class="kpi-value text-caution">{{ lane3 }}</div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Lane 4</span><span class="kpi-chip chip-critical"></span></div>
+      <div id="lane4" class="kpi-value text-critical">{{ lane4 }}</div>
+    </div>
+  </div>
+
+  <div class="section-label">Traffic Overview</div>
+  <div class="grid grid-4">
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Total Traffic</span><span class="kpi-chip chip-caution"></span></div>
+      <div id="total" class="kpi-value text-caution">{{ total }}</div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Predicted Traffic</span><span class="kpi-chip chip-normal"></span></div>
+      <div id="prediction" class="kpi-value text-normal">{{ prediction }}</div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Traffic Trend</span><span class="kpi-chip chip-info"></span></div>
+      <div id="traffic_trend" class="kpi-value text-info" style="font-size:22px; padding-top:8px;">STABLE</div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Signal Status</span></div>
+      <div style="margin-top:10px;">
+        <span id="signal" class="badge {% if 'GREEN' in signal %}badge-normal{% else %}badge-critical{% endif %}">
+          {{ signal }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">System Performance</div>
+  <div class="grid grid-4">
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Processing FPS</span><span class="kpi-chip chip-info"></span></div>
+      <div><span id="fps" class="kpi-value text-info">{{ fps }}</span></div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Vehicles / Minute</span><span class="kpi-chip chip-normal"></span></div>
+      <div id="throughput" class="kpi-value text-normal">{{ throughput }}</div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Congestion Score</span><span class="kpi-chip chip-caution"></span></div>
+      <div id="congestion_score" class="kpi-value text-caution">{{ congestion_score }}<span class="kpi-unit">/100</span></div>
+    </div>
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Last Update</span><span class="kpi-chip chip-info"></span></div>
+      <div id="last_update" class="kpi-value text-info" style="font-size:22px; padding-top:8px; font-family:var(--font-mono);">--:--:--</div>
+    </div>
+  </div>
+
+  <div class="section-label">System Health</div>
+  <div class="grid grid-4">
+    <div class="panel kpi">
+      <div class="kpi-top"><span class="kpi-title">Overall Status</span><span class="kpi-chip chip-normal"></span></div>
+      <div id="system_health" class="kpi-value text-normal" style="font-size:22px; padding-top:8px;">HEALTHY</div>
+    </div>
+  </div>
+
+  <div class="section-label">Live Feed</div>
+  <div class="panel camera-panel">
+    <div class="panel-header">
+      <span class="panel-title">Intersection Camera Feed</span>
+      <span class="panel-meta">960&times;540 &middot; MJPEG</span>
+    </div>
+    <div class="panel-body">
+      <div class="camera-frame">
+        <img src="/video_feed" alt="Live traffic camera feed with vehicle detection overlay">
+        <div class="camera-overlay-top">
+          <span class="rec-chip"><span class="rec-dot"></span>REC</span>
+          <span class="cam-id" id="cam-id-overlay">CAM-01</span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Analytics</div>
+  <div class="grid grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Traffic Trend</span>
+        <span class="panel-meta">last 20 samples</span>
+      </div>
+      <div class="panel-body"><canvas id="trafficChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Lane Comparison</span>
+        <span class="panel-meta">current</span>
+      </div>
+      <div class="panel-body"><canvas id="laneChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">Congestion &amp; Incident Response</div>
+  <div class="grid grid-2b">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Congestion Status</span></div>
+      <div class="panel-body">
+        <div class="status-row">
+          <span id="congestion" class="badge {% if congestion == 'HIGH' %}badge-critical{% elif congestion == 'MEDIUM' %}badge-caution{% else %}badge-normal{% endif %}">
+            {{ congestion }}
+          </span>
+        </div>
+        <p class="helper-text">
+          Real-time congestion classification based on the latest traffic density at this junction.
+        </p>
+      </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Predicted Traffic</div>
-            <div id="prediction" class="metric-value text-success">{{ prediction }}</div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Smart Incident Detection</span></div>
+      <div class="panel-body">
+        <div class="incident-block">
+          <p id="incident_status" class="incident-status">{{ incident_status }}</p>
+          <p class="helper-text" id="incident_alert" style="margin:0 0 10px;">{{ incident_alert }}</p>
+          <div class="incident-row">
+            <span class="label">Most Congested</span>
+            <span class="value" id="incident_lane">{{ incident_lane }}</span>
+          </div>
+          <div class="incident-row">
+            <span class="label">Recommended Action</span>
+            <span class="value" id="incident_action">{{ incident_action }}</span>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Traffic Trend</div>
-            <div id="traffic_trend" class="metric-value text-info">STABLE</div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Signal Status</div>
-            <div class="metric-value">
-                <span id="signal" class="badge {% if 'GREEN' in signal %}badge-green{% else %}badge-red{% endif %} p-2">
-                    {{ signal }}
-                </span>
-            </div>
-        </div>
-    </div>
-
-</div>
-<!-- Performance Metrics -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Processing FPS</div>
-            <div id="fps" class="metric-value text-info">{{ fps }}</div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Vehicles / Minute</div>
-            <div id="throughput" class="metric-value text-success">{{ throughput }}</div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Congestion Score</div>
-            <div id="congestion_score" class="metric-value text-warning">{{ congestion_score }}</div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">Last Update</div>
-            <div id="last_update" class="metric-value text-info">--:--:--</div>
-        </div>
-    </div>
-</div>
-
-<!-- System Health -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="metric-card">
-            <div class="metric-title">System Health</div>
-            <div id="system_health" class="metric-value text-success">HEALTHY</div>
-        </div>
-    </div>
-</div>
-<div id="emergencyBanner" class="alert alert-danger text-center fw-bold d-none">
-    EMERGENCY VEHICLE DETECTED - PRIORITY SIGNAL ACTIVATED
-</div>
-<div class="row g-4 mb-4">
-
-    <div class="col-12">
-
-        <div class="chart-card">
-
-            <div class="section-title">
-                Live Traffic Camera
-            </div>
-
-            <img src="/video_feed"
-                 class="img-fluid rounded"
-                 style="width:100%; max-height:500px; object-fit:cover;">
-
-        </div>
-
-    </div>
-
-
-
-<!-- Charts -->
-<div class="row g-4 mb-4">
-    <div class="col-lg-8">
-        <div class="chart-card">
-            <div class="section-title">Traffic Trend</div>
-            <canvas id="trafficChart"></canvas>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="chart-card">
-            <div class="section-title">Lane Comparison</div>
-            <canvas id="laneChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Congestion + Incident -->
-<div class="row g-4 mb-4">
-    <div class="col-lg-6">
-        <div class="chart-card">
-            <div class="section-title">Congestion Status</div>
-            <div class="metric-value">
-                <span id="congestion" class="badge {% if congestion == 'HIGH' %}badge-high{% elif congestion == 'MEDIUM' %}badge-medium{% else %}badge-live{% endif %} p-2">
-                    {{ congestion }}
-                </span>
-            </div>
-            <p class="text-secondary mt-3 mb-0">
-                Real-time congestion classification based on the latest traffic density.
-            </p>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="chart-card">
-            <div class="section-title">Smart Incident Detection</div>
-            <div class="alert-panel">
-                <h5 id="incident_status" class="mb-2">{{ incident_status }}</h5>
-                <p id="incident_alert" class="mb-2">{{ incident_alert }}</p>
-                <p class="mb-1"><strong>Most Congested:</strong> <span id="incident_lane">{{ incident_lane }}</span></p>
-                <p class="mb-0"><strong>Recommended Action:</strong> <span id="incident_action">{{ incident_action }}</span></p>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="text-end mb-3">
-    <a href="/download" class="btn btn-success">
-        Download Traffic Dataset
+  <div class="action-row">
+    <a href="/download" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Download Traffic Dataset
     </a>
-</div>
-<div class="d-flex justify-content-between align-items-center pt-2 footer">
-    <div>Live dashboard updates every second</div>
-    <div>UrbanGrid AI v1.0</div>
-</div>
-```
+  </div>
 
-</div>
+  <div class="footer">
+    <div>Live dashboard updates every second &middot; UrbanGrid AI v1.0</div>
+    <div>For operational use by authorized personnel only</div>
+  </div>
+
+</main>
 
 <script>
-const trafficCtx = document.getElementById('trafficChart');
+const chartTextColor = '#7f8fb3';
+const chartGridColor = 'rgba(28,42,69,0.55)';
 
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+
+const trafficCtx = document.getElementById('trafficChart');
 const trafficChart = new Chart(trafficCtx, {
     type: 'line',
     data: {
@@ -302,33 +663,24 @@ const trafficChart = new Chart(trafficCtx, {
             label: 'Total Traffic',
             data: {{ chart_values | tojson }},
             borderColor: '#22c55e',
-            backgroundColor: 'rgba(34,197,94,0.18)',
+            backgroundColor: 'rgba(34,197,94,0.14)',
             fill: true,
-            tension: 0.35
+            tension: 0.3,
+            pointRadius: 2,
+            borderWidth: 2
         }]
     },
     options: {
         responsive: true,
-        plugins: {
-            legend: {
-                labels: { color: '#e5e7eb' }
-            }
-        },
+        plugins: { legend: { labels: { color: chartTextColor, font: { size: 11 } } } },
         scales: {
-            x: {
-                ticks: { color: '#cbd5e1' },
-                grid: { color: '#1f2937' }
-            },
-            y: {
-                ticks: { color: '#cbd5e1' },
-                grid: { color: '#1f2937' }
-            }
+            x: { ticks: { color: chartTextColor, font: { size: 10 } }, grid: { color: chartGridColor } },
+            y: { ticks: { color: chartTextColor, font: { size: 10 } }, grid: { color: chartGridColor } }
         }
     }
 });
 
 const laneCtx = document.getElementById('laneChart');
-
 const laneChart = new Chart(laneCtx, {
     type: 'bar',
     data: {
@@ -336,25 +688,17 @@ const laneChart = new Chart(laneCtx, {
         datasets: [{
             label: 'Vehicles',
             data: [{{ lane1 }}, {{ lane2 }}, {{ lane3 }}, {{ lane4 }}],
-            backgroundColor: ['#3b82f6','#22c55e','#f59e0b','#ef4444']
+            backgroundColor: ['#38bdf8', '#22c55e', '#f5a623', '#ef4444'],
+            borderRadius: 5,
+            maxBarThickness: 46
         }]
     },
     options: {
         responsive: true,
-        plugins: {
-            legend: {
-                labels: { color: '#e5e7eb' }
-            }
-        },
+        plugins: { legend: { labels: { color: chartTextColor, font: { size: 11 } } } },
         scales: {
-            x: {
-                ticks: { color: '#cbd5e1' },
-                grid: { color: '#1f2937' }
-            },
-            y: {
-                ticks: { color: '#cbd5e1' },
-                grid: { color: '#1f2937' }
-            }
+            x: { ticks: { color: chartTextColor, font: { size: 10 } }, grid: { color: chartGridColor } },
+            y: { ticks: { color: chartTextColor, font: { size: 10 } }, grid: { color: chartGridColor } }
         }
     }
 });
@@ -376,44 +720,38 @@ async function updateDashboard() {
         document.getElementById('throughput').textContent = data.throughput;
         document.getElementById('congestion_score').textContent = data.congestion_score;
 
-        document.getElementById('last_update').textContent =
-            new Date().toLocaleTimeString();
-        document.getElementById('navbarClock').textContent =
-    new Date().toLocaleTimeString();
+        document.getElementById('last_update').textContent = new Date().toLocaleTimeString();
+        document.getElementById('navbarClock').textContent = new Date().toLocaleTimeString();
 
-if (data.total > data.prediction) {
-    document.getElementById('traffic_trend').textContent = 'INCREASING';
-} else if (data.total < data.prediction) {
-    document.getElementById('traffic_trend').textContent = 'DECREASING';
-} else {
-    document.getElementById('traffic_trend').textContent = 'STABLE';
-}
+        if (data.total > data.prediction) {
+            document.getElementById('traffic_trend').textContent = 'INCREASING';
+        } else if (data.total < data.prediction) {
+            document.getElementById('traffic_trend').textContent = 'DECREASING';
+        } else {
+            document.getElementById('traffic_trend').textContent = 'STABLE';
+        }
 
-const banner = document.getElementById('emergencyBanner');
-if (Math.max(data.lane1, data.lane2, data.lane3, data.lane4) >= 12) {
-    banner.classList.remove('d-none');
-} else {
-    banner.classList.add('d-none');
-}
+        const banner = document.getElementById('emergencyBanner');
+        if (Math.max(data.lane1, data.lane2, data.lane3, data.lane4) >= 12) {
+            banner.classList.remove('d-none');
+        } else {
+            banner.classList.add('d-none');
+        }
 
-        document.getElementById('system_health').textContent =
-            data.system_health || 'HEALTHY';
+        document.getElementById('system_health').textContent = data.system_health || 'HEALTHY';
 
         const signal = document.getElementById('signal');
         signal.textContent = data.signal;
-        signal.className = data.signal.includes('GREEN')
-            ? 'badge badge-green p-2'
-            : 'badge badge-red p-2';
+        signal.className = data.signal.includes('GREEN') ? 'badge badge-normal' : 'badge badge-critical';
 
         const congestion = document.getElementById('congestion');
         congestion.textContent = data.congestion;
-
         if (data.congestion === 'HIGH') {
-            congestion.className = 'badge badge-high p-2';
+            congestion.className = 'badge badge-critical';
         } else if (data.congestion === 'MEDIUM') {
-            congestion.className = 'badge badge-medium p-2';
+            congestion.className = 'badge badge-caution';
         } else {
-            congestion.className = 'badge badge-live p-2';
+            congestion.className = 'badge badge-normal';
         }
 
         if (data.chart_values) {
@@ -422,12 +760,7 @@ if (Math.max(data.lane1, data.lane2, data.lane3, data.lane4) >= 12) {
             trafficChart.update();
         }
 
-        laneChart.data.datasets[0].data = [
-            data.lane1,
-            data.lane2,
-            data.lane3,
-            data.lane4
-        ];
+        laneChart.data.datasets[0].data = [data.lane1, data.lane2, data.lane3, data.lane4];
         laneChart.update();
 
         if (data.incident_status) {
