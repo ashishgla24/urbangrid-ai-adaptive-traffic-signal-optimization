@@ -548,7 +548,7 @@
     </div>
     <div class="panel kpi">
       <div class="kpi-top"><span class="kpi-title">Congestion Score</span><span class="kpi-chip chip-caution"></span></div>
-      <div id="congestion_score" class="kpi-value text-caution">{{ congestion_score }}<span class="kpi-unit">/100</span></div>
+      <div id="congestion_score" class="kpi-value text-caution"><span id="congestion_value">{{ congestion_score }}</span><span class="kpi-unit">/100</span></div>
     </div>
     <div class="panel kpi">
       <div class="kpi-top"><span class="kpi-title">Last Update</span><span class="kpi-chip chip-info"></span></div>
@@ -686,8 +686,8 @@ const laneChart = new Chart(laneCtx, {
     data: {
         labels: ['Lane 1', 'Lane 2', 'Lane 3', 'Lane 4'],
         datasets: [{
-            label: 'Vehicles',
-            data: [{{ lane1 }}, {{ lane2 }}, {{ lane3 }}, {{ lane4 }}],
+          label: 'Vehicles',
+          data: [{{ lane1 | tojson }}, {{ lane2 | tojson }}, {{ lane3 | tojson }}, {{ lane4 | tojson }}],
             backgroundColor: ['#38bdf8', '#22c55e', '#f5a623', '#ef4444'],
             borderRadius: 5,
             maxBarThickness: 46
@@ -718,7 +718,8 @@ async function updateDashboard() {
 
         document.getElementById('fps').textContent = Number(data.fps).toFixed(1);
         document.getElementById('throughput').textContent = data.throughput;
-        document.getElementById('congestion_score').textContent = data.congestion_score;
+        const congestionValueEl = document.getElementById('congestion_value');
+        if (congestionValueEl) congestionValueEl.textContent = data.congestion_score;
 
         document.getElementById('last_update').textContent = new Date().toLocaleTimeString();
         document.getElementById('navbarClock').textContent = new Date().toLocaleTimeString();
@@ -732,10 +733,26 @@ async function updateDashboard() {
         }
 
         const banner = document.getElementById('emergencyBanner');
-        if (Math.max(data.lane1, data.lane2, data.lane3, data.lane4) >= 12) {
+
+        try {
+          if (data.emergency_detected) {
+            const evType = (data.emergency_type || 'VEHICLE').toString().toUpperCase();
+            const evLane = (data.emergency_lane == null) ? '—' : String(data.emergency_lane);
             banner.classList.remove('d-none');
-        } else {
+            banner.innerHTML = `
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l9 16H3l9-16z" stroke="#fecaca" stroke-width="1.7" stroke-linejoin="round"/>
+                <path d="M12 10v4" stroke="#fecaca" stroke-width="1.7" stroke-linecap="round"/>
+                <circle cx="12" cy="17" r="0.9" fill="#fecaca"/>
+              </svg>
+              EMERGENCY VEHICLE DETECTED — ${evType} IN LANE ${evLane}
+            `;
+          } else {
             banner.classList.add('d-none');
+          }
+        } catch (e) {
+          console.warn('Emergency banner update skipped:', e);
+          if (banner) banner.classList.add('d-none');
         }
 
         document.getElementById('system_health').textContent = data.system_health || 'HEALTHY';
@@ -760,7 +777,7 @@ async function updateDashboard() {
             trafficChart.update();
         }
 
-        laneChart.data.datasets[0].data = [data.lane1, data.lane2, data.lane3, data.lane4];
+        laneChart.data.datasets[0].data = [Number(data.lane1) || 0, Number(data.lane2) || 0, Number(data.lane3) || 0, Number(data.lane4) || 0];
         laneChart.update();
 
         if (data.incident_status) {

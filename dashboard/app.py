@@ -4,8 +4,11 @@ import time
 import threading
 import cv2
 from ultralytics import YOLO
-from incident_detector import analyze_incidents
-
+from .incident_detector import analyze_incidents
+import sys
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+from urbangrid.emergency_detector import EmergencyVehicleDetector
 app = Flask(__name__)
 
 # ----------------------------
@@ -15,7 +18,7 @@ app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VIDEO_PATH = os.path.join(BASE_DIR, "data", "raw", "traffic.mp4")
 DATASET_PATH = os.path.join(BASE_DIR, "data", "processed", "traffic_dataset.csv")
-MODEL_PATH = os.path.join(BASE_DIR, "yolov8n.pt")
+MODEL_PATH = os.path.join(BASE_DIR, "yolov8s.pt")
 
 # ----------------------------
 # Load YOLO model
@@ -39,7 +42,11 @@ live_data = {
     "fps": 0.0,
     "throughput": 0,
     "congestion_score": 0,
-    "system_health": "HEALTHY"
+    "system_health": "HEALTHY",
+
+    "emergency_detected": False,
+    "emergency_lane": None,
+    "emergency_type": None
 }
 
 chart_labels = []
@@ -70,7 +77,7 @@ def detection_loop():
         return
 
     vehicle_classes = {2, 3, 5, 7}
-
+    emergency_detector = EmergencyVehicleDetector()
     frame_count = 0
     fps_window_start = time.time()
     fps_window_frames = 0
@@ -114,7 +121,7 @@ def detection_loop():
                         frame,
                         persist=True,
                         tracker="bytetrack.yaml",
-                        conf=0.45,
+                        conf=0.10,
                         iou=0.45,
                         verbose=False
                     )[0]
@@ -127,20 +134,30 @@ def detection_loop():
                     )
                     tracking_available = False
                     results = model.predict(
-                        frame, conf=0.45, iou=0.45, verbose=False
+                        frame, conf=0.10, iou=0.45, verbose=False
                     )[0]
             else:
                 results = model.predict(
-                    frame, conf=0.45, iou=0.45, verbose=False
+                    frame, conf=0.10, iou=0.45, verbose=False
                 )[0]
+                vehicle_boxes = 0
+                if results.boxes is not None:
+                    for b in results.boxes:
+                      if int(b.cls[0]) in vehicle_classes:
+                         vehicle_boxes += 1
+                         print("Detected vehicles:", vehicle_boxes,flush=True)
 
             h, w, _ = frame.shape
+            # Draw lane boundaries
+            cv2.line(frame, (int(w*0.25), 0), (int(w*0.25), h), (255,255,0), 2)
+            cv2.line(frame, (int(w*0.50), 0), (int(w*0.50), h), (255,255,0), 2)
+            cv2.line(frame, (int(w*0.75), 0), (int(w*0.75), h), (255,255,0), 2)
             lane_counts = [0, 0, 0, 0]
-
+            vehicle_count = 0
             now = time.time()
             boxes = results.boxes
             has_ids = boxes is not None and getattr(boxes, "id", None) is not None
-
+            emergency_input = []
             if boxes is not None:
                 classes = boxes.cls.int().tolist()
                 xyxy = boxes.xyxy.tolist()
@@ -157,13 +174,31 @@ def detection_loop():
 
                 for track_id, cls, (x1, y1, x2, y2) in zip(ids, classes, xyxy):
                     if cls not in vehicle_classes:
-                        continue
+                       continue
 
+                    vehicle_count += 1
                     x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
                     center_x = (x1 + x2) // 2
-                    lane = min(center_x * 4 // w, 3)
-                    lane_counts[lane] += 1
 
+                   # Temporary lane boundaries
+                    lane1_end = int(w * 0.25)
+                    lane2_end = int(w * 0.50)
+                    lane3_end = int(w * 0.75)
+
+                    if center_x < lane1_end:
+                      lane = 0
+                    elif center_x < lane2_end:
+                       lane = 1
+                    elif center_x < lane3_end:
+                       lane = 2
+                    else:
+                      lane = 3
+
+                    lane_counts[lane] += 1
+                    emergency_input.append({
+                       "label": model.names[cls],
+                       "bbox": (x1, y1, x2, y2)
+                    }) 
                     if has_ids and track_id not in track_first_seen:
                         track_first_seen[track_id] = now
 
@@ -194,7 +229,15 @@ def detection_loop():
             }
             last_prune = now
 
-        total = sum(lane_counts)
+        # Detect emergency vehicle
+        emergency_info = emergency_detector.detect(
+            emergency_input,
+            w
+        )
+
+        frame = emergency_detector.draw(frame, emergency_info)
+
+        total = vehicle_count
 
         if has_ids:
             # real "vehicles/minute": unique vehicles first seen in the
@@ -242,7 +285,9 @@ def detection_loop():
             live_data["throughput"] = vehicles_per_minute
             live_data["congestion_score"] = min(total * 2, 100)
             live_data["fps"] = round(current_fps, 1)
-
+            live_data["emergency_detected"] = emergency_info["detected"]
+            live_data["emergency_lane"] = emergency_info["lane"]
+            live_data["emergency_type"] = emergency_info["type"]
             chart_labels.append(str(frame_count))
             chart_values.append(total)
             if len(chart_labels) > 20:
@@ -369,6 +414,7 @@ def system_status():
 # ----------------------------
 
 if __name__ == "__main__":
+    threading.Thread(target=detection_loop, daemon=True).start()
     # debug=False in the main run so the reloader doesn't spawn a second
     # process (which would start a second, competing detection_loop thread).
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
