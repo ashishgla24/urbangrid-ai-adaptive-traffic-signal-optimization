@@ -6,7 +6,9 @@
 <title>UrbanGrid AI | Traffic Operations Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{
     --bg-base:#060a12;
@@ -310,6 +312,11 @@
   .panel-body{ padding:16px 18px 18px; }
 
   .camera-panel .panel-body{ padding:14px; }
+  #trafficMap{ height:360px; width:100%; border-radius:7px; overflow:hidden; border:1px solid var(--border-soft); }
+  .map-legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; color:var(--text-secondary); font:11px var(--font-mono); }
+  .map-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .map-dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .map-dot.red{ background:#ef4444; } .map-dot.yellow{ background:#f5a623; } .map-dot.green{ background:#22c55e; }
   .camera-frame{
     position:relative;
     border-radius:7px;
@@ -581,6 +588,22 @@
     </div>
   </div>
 
+  <div class="section-label">Live Location</div>
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Traffic Location Map</span>
+      <span class="panel-meta" id="map-location-name">{{ map_location_name }}</span>
+    </div>
+    <div class="panel-body">
+      <div id="trafficMap" aria-label="Live traffic location map"></div>
+      <div class="map-legend" aria-label="Traffic status legend">
+        <span><i class="map-dot green"></i>LOW</span>
+        <span><i class="map-dot yellow"></i>MEDIUM</span>
+        <span><i class="map-dot red"></i>HIGH / CRITICAL</span>
+      </div>
+    </div>
+  </div>
+
   <div class="section-label">Analytics</div>
   <div class="grid grid-2">
     <div class="panel">
@@ -649,6 +672,22 @@
 </main>
 
 <script>
+const map = L.map('trafficMap').setView([{{ map_latitude }}, {{ map_longitude }}], 14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+let trafficMarker = L.circleMarker([{{ map_latitude }}, {{ map_longitude }}], {
+  radius: 14, color: '#22c55e', weight: 3, fillColor: '#22c55e', fillOpacity: 0.75
+}).addTo(map);
+
+function updateTrafficMap(data) {
+  const status = (data.incident_status || data.congestion || 'LOW').toUpperCase();
+  const color = (status === 'HIGH' || status === 'CRITICAL') ? '#ef4444' : status === 'MEDIUM' ? '#f5a623' : '#22c55e';
+  trafficMarker.setStyle({color, fillColor: color});
+  trafficMarker.bindPopup(`<strong>{{ map_location_name }}</strong><br>Status: ${status}<br>Vehicles: ${data.total || 0}<br>${data.incident_alert || ''}`);
+}
+
 const chartTextColor = '#7f8fb3';
 const chartGridColor = 'rgba(28,42,69,0.55)';
 
@@ -786,6 +825,8 @@ async function updateDashboard() {
             document.getElementById('incident_lane').textContent = data.incident_lane;
             document.getElementById('incident_action').textContent = data.incident_action;
         }
+
+          updateTrafficMap(data);
 
     } catch (err) {
         console.error('Dashboard update failed:', err);

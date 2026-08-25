@@ -55,7 +55,8 @@ class VehicleDetector:
         detections = detections[mask]
 
         if self.tracker is not None:
-            detections = self.tracker.update_with_detections(detections)
+            tracked_detections = self.tracker.update_with_detections(detections)
+            detections = tracked_detections if len(tracked_detections) else detections
 
         out = []
         for i in range(len(detections)):

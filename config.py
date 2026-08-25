@@ -12,7 +12,7 @@ from typing import List, Tuple
 
 @dataclass
 class DetectionConfig:
-    model_path: str = "yolov8s.pt"          # single source of truth (was yolov8n/yolov8s mismatch)
+    model_path: str = "yolov8n.pt"          # lighter default for reliable CPU inference
     confidence: float = 0.20                  # was 0.15 in some files, 0.20 in others
     img_size: int = 960
     frame_width: int = 960
